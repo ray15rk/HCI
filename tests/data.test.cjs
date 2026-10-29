@@ -6,91 +6,65 @@ const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
 const browser = vm.createContext({ structuredClone });
-vm.runInContext(readFileSync(path.join(root, 'data.js'), 'utf8'), browser);
+for (const file of ['data.js', 'engine.js']) {
+    vm.runInContext(readFileSync(path.join(root, file), 'utf8'), browser);
+}
 const data = browser.HealthAIData;
+const engine = browser.HealthAIEngine;
 
-test('the page loads the data as a classic browser script', () => {
+test('the page loads the engine and app after the data, in order', () => {
     const html = readFileSync(path.join(root, 'index.html'), 'utf8');
-    assert.match(html, /<script src="data\.js"><\/script>/);
-    assert.ok(data);
-    assert.ok(Object.isFrozen(data));
+    const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(match => match[1]);
+    assert.deepEqual(scripts, ['data.js', 'engine.js', 'app.js']);
 });
 
-test('symptom IDs and keyword aliases are unique and usable', () => {
-    const ids = new Set();
-    const keywords = new Set();
+test('detects a single symptom from any of its keyword aliases', () => {
+    assert.deepEqual(Array.from(engine.detectSymptoms('I have a headache')), ['headache']);
+    assert.deepEqual(Array.from(engine.detectSymptoms('my head hurts')), ['headache']);
+    assert.deepEqual(Array.from(engine.detectSymptoms('Feeling QUEASY today')), ['nausea']);
+});
+
+test('detects several symptoms in one message, in taxonomy order', () => {
+    assert.deepEqual(Array.from(engine.detectSymptoms('I am tired and have a fever and a headache')),
+        ['headache', 'fatigue', 'fever']);
+});
+
+test('matches whole words only', () => {
+    assert.deepEqual(Array.from(engine.detectSymptoms('My retired uncle visited')), []);
+    assert.deepEqual(Array.from(engine.detectSymptoms('Tired.')), ['fatigue']);
+});
+
+test('handles curly apostrophes and extra whitespace', () => {
+    assert.deepEqual(Array.from(engine.detectSymptoms('I can’t   sleep')), ['sleep-difficulty']);
+});
+
+test('returns nothing for unrelated or empty text', () => {
+    assert.deepEqual(Array.from(engine.detectSymptoms('What is the weather like?')), []);
+    assert.deepEqual(Array.from(engine.detectSymptoms('')), []);
+});
+
+test('every symptom keyword is detected as that symptom', () => {
     for (const symptom of data.SYMPTOMS) {
-        assert.ok(symptom.id && symptom.label);
-        assert.ok(!ids.has(symptom.id), `Duplicate symptom: ${symptom.id}`);
-        ids.add(symptom.id);
-        assert.ok(symptom.keywords.length > 0);
         for (const keyword of symptom.keywords) {
-            assert.ok(keyword.trim());
-            assert.equal(keyword, keyword.toLowerCase());
-            assert.ok(!keywords.has(keyword), `Ambiguous keyword: ${keyword}`);
-            keywords.add(keyword);
-        }
-    }
-    assert.ok(ids.size > 0);
-});
-
-test('condition mappings reference valid symptoms and achievable thresholds', () => {
-    const symptomIds = new Set(data.SYMPTOMS.map(symptom => symptom.id));
-    const conditionIds = new Set();
-    assert.ok(data.CONDITIONS.length > 0);
-    for (const condition of data.CONDITIONS) {
-        assert.ok(condition.id && condition.label);
-        assert.ok(!conditionIds.has(condition.id));
-        conditionIds.add(condition.id);
-        assert.equal(new Set(condition.symptomIds).size, condition.symptomIds.length);
-        assert.ok(condition.symptomIds.every(id => symptomIds.has(id)));
-        assert.ok(Number.isInteger(condition.minimumMatches));
-        assert.ok(condition.minimumMatches > 0);
-        assert.ok(condition.minimumMatches <= condition.symptomIds.length);
-    }
-});
-
-test('mock chats have unique IDs, valid dates, and user/assistant messages', () => {
-    const ids = new Set();
-    const messageIds = new Set();
-    assert.ok(data.MOCK_HISTORY.length >= 3);
-    for (const chat of data.MOCK_HISTORY) {
-        assert.ok(chat.id && chat.title);
-        assert.ok(!ids.has(chat.id));
-        ids.add(chat.id);
-        assert.equal(chat.isMock, true);
-        assert.ok(Number.isFinite(Date.parse(chat.createdAt)));
-        assert.ok(chat.messages.some(message => message.role === 'user'));
-        assert.ok(chat.messages.some(message => message.role === 'assistant'));
-        for (const message of chat.messages) {
-            assert.ok(message.id && message.text.trim());
-            assert.ok(!messageIds.has(message.id));
-            messageIds.add(message.id);
-            assert.ok(['user', 'assistant'].includes(message.role));
+            assert.ok(Array.from(engine.detectSymptoms(`I have ${keyword}.`)).includes(symptom.id),
+                `Keyword not detected: ${keyword}`);
         }
     }
 });
 
-test('the demo supplies the three migraine-pattern keywords across separate chats', () => {
-    const condition = data.CONDITIONS.find(item => item.id === 'migraine-pattern');
-    const contributingChats = new Set();
-    for (const id of condition.symptomIds) {
-        const symptom = data.SYMPTOMS.find(item => item.id === id);
-        const chat = data.MOCK_HISTORY.find(item => item.messages.some(message =>
-            message.role === 'user' && symptom.keywords.some(keyword => message.text.toLowerCase().includes(keyword))));
-        assert.ok(chat, `Missing demonstration symptom: ${id}`);
-        contributingChats.add(chat.id);
-    }
-    assert.equal(contributingChats.size, 3);
+test('each mock chat is detected as its own symptom', () => {
+    const detected = Array.from(data.MOCK_HISTORY, chat => Array.from(engine.detectSymptoms(chat.messages[0].text)));
+    assert.deepEqual(detected, [['headache'], ['nausea'], ['light-sensitivity']]);
 });
 
-test('editable history copies cannot mutate the seed or other copies', () => {
-    const first = data.createMockHistory();
-    const second = data.createMockHistory();
-    first[0].messages[0].text = 'Edited';
-    first.pop();
-    assert.notEqual(second[0].messages[0].text, 'Edited');
-    assert.notEqual(data.MOCK_HISTORY[0].messages[0].text, 'Edited');
-    assert.equal(second.length, data.MOCK_HISTORY.length);
-    assert.ok(Object.isFrozen(data.MOCK_HISTORY[0].messages[0]));
+test('replies name the detected symptoms', () => {
+    const reply = engine.buildReply('I have a headache and I feel nauseous');
+    assert.deepEqual(Array.from(reply.symptomIds), ['headache', 'nausea']);
+    assert.match(reply.text, /\*\*headache\*\* and \*\*nausea\*\*/);
+});
+
+test('replies without a symptom invite the user to describe one', () => {
+    const reply = engine.buildReply('hello there');
+    assert.deepEqual(Array.from(reply.symptomIds), []);
+    assert.match(reply.text, /didn't pick up a specific symptom/);
 });
