@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health AI Prototype</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app-container">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3>GenAI</h3>
+            <button class="new-chat-btn">+ New chat</button>
+        </div>
+        
+        <div class="recent-list">
+            <span class="label-tiny">RECENT</span>
+            <div id="recent-chats"></div>
+        </div>
+    </div>
+
+    <!-- MAIN CHAT AREA -->
+    <div id="chat-view" class="main-content">
+        <div class="chat-header">
+            <div class="chat-title">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h2 id="chat-title">New chat</h2>
+                </div>
+                <p id="chat-subtitle">General GenAI conversation</p>
+            </div>
+        </div>
+        
+        <div id="chat-history" class="chat-history">
+            <!-- Messages injected here -->
+        </div>
+        
+        <div id="input-container" class="input-container">
+            <div class="input-box">
+                <input type="text" id="user-input" placeholder="Message GenAI...">
+                <button id="send-btn">↑</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
