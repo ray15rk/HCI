@@ -100,3 +100,32 @@ body { margin: 0; padding: 0; display: flex; height: 100vh; background-color: #f
     transition: background 0.2s; flex-shrink: 0;
 }
 #send-btn:hover { background-color: #27272a; }
+
+/* --- INSIGHT CARDS --- */
+.insight-card { 
+    background-color: #f0f7ff; 
+    border: 1px solid #dbeafe; 
+    border-radius: 12px; 
+    padding: 16px; 
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.badge-row { font-size: 12px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: 0.5px; }
+.insight-text { font-size: 13px; color: #3b82f6; line-height: 1.4; }
+
+.insight-footer { 
+    margin-top: 4px;
+    background-color: #ffffff; 
+    border: 1px solid #bfdbfe; 
+    border-radius: 9999px; 
+    padding: 8px 16px; 
+    text-align: center; 
+    cursor: pointer; 
+    font-size: 13px; 
+    font-weight: 500; 
+    color: #1d4ed8; 
+    transition: all 0.2s;
+}
+.insight-footer:hover { background-color: #eff6ff; }

@@ -33,8 +33,13 @@
         return chat;
     }
 
-    function addMessage(chat, role, text) {
-        chat.messages.push({ id: `${chat.id}-m${chat.messages.length + 1}`, role, text });
+    function addMessage(chat, role, text, inference = null) {
+        chat.messages.push({
+            id: `${chat.id}-m${chat.messages.length + 1}`,
+            role,
+            text,
+            inference,
+        });
     }
 
     function shortTitle(text) {
@@ -73,7 +78,9 @@
         // user has switched to another chat in the meantime.
         setTimeout(() => {
             pendingChatIds.delete(chat.id);
-            addMessage(chat, 'assistant', HealthAIEngine.buildReply(text).text);
+            const otherChats = chats.filter(c => c.id !== chat.id);
+            const reply = HealthAIEngine.buildReply(text, otherChats);
+            addMessage(chat, 'assistant', reply.text, reply.inference);
             render();
         }, REPLY_DELAY_MS);
     }
@@ -99,7 +106,7 @@
         });
     }
 
-    function createMessageRow(role, fill) {
+    function createMessageRow(role, fill, inference = null) {
         const row = document.createElement('div');
         row.className = `message-row ${role === 'user' ? 'user' : 'ai'}`;
         const bubble = document.createElement('div');
@@ -115,6 +122,18 @@
             const body = document.createElement('div');
             fill(body);
             content.appendChild(body);
+
+            if (inference) {
+                const card = document.createElement('div');
+                card.className = 'insight-card';
+                card.innerHTML = `
+                    <div class="badge-row">✦ AI-inferred • Based on ${inference.matchedPastChats.length + 1} conversations</div>
+                    <div class="insight-text">Connected with your earlier chats: ${inference.matchedPastChats.map(c => `<em>${c.title}</em>`).join(', ')}</div>
+                    <div class="insight-footer">Why am I seeing this?</div>
+                `;
+                content.appendChild(card);
+            }
+
             bubble.append(icon, content);
         }
         row.appendChild(bubble);
@@ -144,7 +163,7 @@
             createMessageRow(message.role, element => {
                 if (message.role === 'user') element.textContent = message.text;
                 else appendFormattedText(element, message.text);
-            }));
+            }, message.inference));
         if (pendingChatIds.has(activeChat.id)) {
             rows.push(createMessageRow('assistant', element => { element.textContent = 'Thinking...'; }));
         }
