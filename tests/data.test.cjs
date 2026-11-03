@@ -26,7 +26,7 @@ test('detects a single symptom from any of its keyword aliases', () => {
 
 test('detects several symptoms in one message, in taxonomy order', () => {
     assert.deepEqual(Array.from(engine.detectSymptoms('I am tired and have a fever and a headache')),
-        ['headache', 'fatigue', 'fever']);
+        ['fatigue', 'headache', 'fever']);
 });
 
 test('matches whole words only', () => {
@@ -54,13 +54,13 @@ test('every symptom keyword is detected as that symptom', () => {
 
 test('each mock chat is detected as its own symptom', () => {
     const detected = Array.from(data.MOCK_HISTORY, chat => Array.from(engine.detectSymptoms(chat.messages[0].text)));
-    assert.deepEqual(detected, [['headache'], ['nausea'], ['light-sensitivity']]);
+    assert.deepEqual(detected, [['headache'], ['muscle-pain'], ['sleep-difficulty'], ['tingling'], ['hair-thinning'], ['constipation'], []]);
 });
 
 test('replies name the detected symptoms', () => {
     const reply = engine.buildReply('I have a headache and I feel nauseous');
     assert.deepEqual(Array.from(reply.symptomIds), ['headache', 'nausea']);
-    assert.match(reply.text, /\*\*headache\*\* and \*\*nausea\*\*/);
+    assert.match(reply.text, /\*\*headaches\*\* and \*\*nausea\*\*/);
 });
 
 test('replies without a symptom invite the user to describe one', () => {

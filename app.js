@@ -14,6 +14,8 @@
     const userInputElement = document.getElementById('user-input');
     const sendButton = document.getElementById('send-btn');
     const newChatButton = document.querySelector('.new-chat-btn');
+    const crossChatToggle = document.getElementById('cross-chat-toggle');
+    const scopeDisclosure = document.getElementById('scope-disclosure');
 
     // --- STATE ---
     const chats = HealthAIData.createMockHistory();
@@ -78,7 +80,11 @@
         // user has switched to another chat in the meantime.
         setTimeout(() => {
             pendingChatIds.delete(chat.id);
-            const otherChats = chats.filter(c => c.id !== chat.id);
+            
+            // Check privacy toggle state and conditionally pass past chats
+            const isMemoryEnabled = crossChatToggle.checked;
+            const otherChats = isMemoryEnabled ? chats.filter(c => c.id !== chat.id) : [];
+            
             const reply = HealthAIEngine.buildReply(text, otherChats);
             addMessage(chat, 'assistant', reply.text, reply.inference);
             render();
@@ -155,9 +161,12 @@
 
     function renderChat() {
         chatTitleElement.textContent = activeChat.title;
+
         chatSubtitleElement.textContent = activeChat.isMock
             ? `${formatDate(activeChat.createdAt)} • Past conversation`
-            : 'General GenAI conversation';
+            : (crossChatToggle.checked 
+                ? 'General GenAI conversation • Using past chats for context' 
+                : 'General GenAI conversation • Current chat isolated (Memory disabled)');
 
         const rows = activeChat.messages.map(message =>
             createMessageRow(message.role, element => {
@@ -188,6 +197,14 @@
     recentChatsElement.addEventListener('click', event => {
         const item = event.target.closest('.sidebar-item');
         if (item) selectChat(item.dataset.chatId);
+    });
+
+    // Update disclosure and re-render header when toggle is switched
+    crossChatToggle.addEventListener('change', () => {
+        scopeDisclosure.textContent = crossChatToggle.checked
+            ? 'Uses past chats to find health patterns.'
+            : 'Memory disabled. Isolated to current chat.';
+        renderChat();
     });
 
     render();
