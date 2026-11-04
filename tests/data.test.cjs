@@ -68,3 +68,48 @@ test('replies without a symptom invite the user to describe one', () => {
     assert.deepEqual(Array.from(reply.symptomIds), []);
     assert.match(reply.text, /didn't pick up a specific symptom/);
 });
+
+test('consent: engine blocks cross-chat inference when memory is disabled (empty array)', () => {
+    const userText = 'I have a headache and feel nauseous';
+    
+    // With consent (passing MOCK_HISTORY)
+    const replyWithConsent = engine.buildReply(userText, data.MOCK_HISTORY);
+    assert.ok(replyWithConsent.inference !== null, 'Inference should trigger when history is provided');
+
+    // Without consent (passing empty array from the UI toggle)
+    const replyWithoutConsent = engine.buildReply(userText, []);
+    assert.equal(replyWithoutConsent.inference, null, 'Inference must be blocked when history is withheld');
+});
+
+test('consent: engine respects individual chat exclusion flags', () => {
+    const userText = 'I have a headache and feel nauseous';
+    const pastChats = structuredClone(data.MOCK_HISTORY);
+    
+    // Simulate the user opting specific past chats out of the training/memory pool
+    pastChats.forEach(chat => chat.excluded = true); 
+    
+    const reply = engine.buildReply(userText, pastChats);
+    assert.equal(reply.inference, null, 'Excluded chats should not be used for inference');
+});
+
+test('bulk: extracts symptoms from bulk multi-message chat histories', () => {
+    const bulkChat = {
+        messages: [
+            { role: 'user', text: 'I have a fever.' },
+            { role: 'assistant', text: 'Noted.' },
+            { role: 'user', text: 'And also a severe sore throat.' },
+            { role: 'assistant', text: 'Are you coughing?' },
+            { role: 'user', text: 'Yes, I have a bad cough too.' }
+        ]
+    };
+    const symptoms = Array.from(engine.getChatSymptoms(bulkChat));
+    assert.deepEqual(symptoms, ['cough', 'sore-throat', 'fever']); 
+});
+
+test('api failures: engine gracefully handles missing, null, or malformed payloads', () => {
+    assert.deepEqual(Array.from(engine.detectSymptoms(null)), []);
+    assert.deepEqual(Array.from(engine.detectSymptoms(undefined)), []);
+    const badReply = engine.buildReply('I have a headache', null);
+    assert.equal(badReply.inference, null, 'Should fail gracefully to null inference');
+    assert.deepEqual(Array.from(badReply.symptomIds), ['headache']);
+});

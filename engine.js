@@ -134,4 +134,5 @@
     }
 
     globalThis.HealthAIEngine = Object.freeze({ detectSymptoms, getChatSymptoms, findInference, buildReply });
+
 })();
