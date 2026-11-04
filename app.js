@@ -61,6 +61,10 @@
         if (!chat) return;
         activeChat = chat;
         render();
+        const activeItem = document.querySelector(`.sidebar-item[data-chat-id="${id}"]`);
+        if (activeItem) {
+            activeItem.focus();
+        }
     }
 
     function sendMessage() {
@@ -155,6 +159,8 @@
             item.className = `sidebar-item${chat === activeChat ? ' active' : ''}`;
             item.dataset.chatId = chat.id;
             item.textContent = chat.title;
+            item.tabIndex = 0;
+            item.setAttribute('role', 'button');
             return item;
         }));
     }
@@ -197,6 +203,16 @@
     recentChatsElement.addEventListener('click', event => {
         const item = event.target.closest('.sidebar-item');
         if (item) selectChat(item.dataset.chatId);
+    });
+
+    recentChatsElement.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            const item = event.target.closest('.sidebar-item');
+            if (item) {
+                event.preventDefault(); // Prevents the spacebar from scrolling the page
+                selectChat(item.dataset.chatId);
+            }
+        }
     });
 
     // Update disclosure and re-render header when toggle is switched
