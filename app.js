@@ -180,7 +180,9 @@
                 else appendFormattedText(element, message.text);
             }, message.inference));
         if (pendingChatIds.has(activeChat.id)) {
-            rows.push(createMessageRow('assistant', element => { element.textContent = 'Thinking...'; }));
+            rows.push(createMessageRow('assistant', element => { 
+                element.innerHTML = '<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>'; 
+            }));
         }
         chatHistoryElement.replaceChildren(...rows);
         chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight;
@@ -221,6 +223,20 @@
             ? 'Uses past chats to find health patterns.'
             : 'Memory disabled. Isolated to current chat.';
         renderChat();
+    });
+
+    // Documentation modal events
+    chatHistoryElement.addEventListener('click', event => {
+        if (event.target.classList.contains('insight-footer')) {
+            helpModal.classList.remove('hidden');
+        }
+    });
+
+    closeModalBtn.addEventListener('click', () => helpModal.classList.add('hidden'));
+    
+    // Close modal if user clicks outside the modal content area
+    helpModal.addEventListener('click', event => {
+        if (event.target === helpModal) helpModal.classList.add('hidden');
     });
 
     render();
