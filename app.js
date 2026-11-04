@@ -16,6 +16,8 @@
     const newChatButton = document.querySelector('.new-chat-btn');
     const crossChatToggle = document.getElementById('cross-chat-toggle');
     const scopeDisclosure = document.getElementById('scope-disclosure');
+    const helpModal = document.getElementById('help-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
 
     // --- STATE ---
     const chats = HealthAIData.createMockHistory();
